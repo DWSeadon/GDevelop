@@ -827,7 +827,7 @@ export default class PreferencesProvider extends React.Component<Props, State> {
   }
   _setEditorStateForProject(
     projectId: string,
-    editorState: {| editorTabs: EditorTabsPersistedState |}
+    editorState?: {| editorTabs: EditorTabsPersistedState |}
   ) {
     this.setState(
       state => ({
