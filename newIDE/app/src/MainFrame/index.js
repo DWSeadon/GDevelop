@@ -173,6 +173,7 @@ import CloudProjectSaveChoiceDialog from '../ProjectsStorage/CloudStorageProvide
 import { dataObjectToProps } from '../Utils/HTMLDataset';
 import useCreateProject from '../Utils/UseCreateProject';
 import { isTryingToSaveInForbiddenPath } from '../ProjectsStorage/LocalFileStorageProvider/LocalProjectWriter';
+import useEditorTabsStateSaving from '../Utils/UseEditorTabsStateSaving';
 
 const GD_STARTUP_TIMES = global.GD_STARTUP_TIMES || [];
 
@@ -377,6 +378,12 @@ const MainFrame = (props: Props) => {
   const inAppTutorialOrchestratorRef = React.useRef<?InAppTutorialOrchestratorInterface>(
     null
   );
+  useEditorTabsStateSaving({
+    projectId: state.currentProject
+      ? state.currentProject.getProjectUuid()
+      : null,
+    editorTabs: state.editorTabs,
+  });
 
   const eventsFunctionsExtensionsContext = React.useContext(
     EventsFunctionsExtensionsContext
