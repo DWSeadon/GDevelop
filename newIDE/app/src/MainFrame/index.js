@@ -575,7 +575,15 @@ const MainFrame = (props: Props) => {
   );
 
   const getEditorOpeningOptions = React.useCallback(
-    (kind: EditorKind, name: string) => {
+    ({
+      kind,
+      name,
+      dontFocusTab,
+    }: {
+      kind: EditorKind,
+      name: string,
+      dontFocusTab?: boolean,
+    }) => {
       const label =
         kind === 'resources'
           ? i18n._(t`Resources`)
@@ -621,16 +629,31 @@ const MainFrame = (props: Props) => {
         renderEditorContainer: editorKindToRenderer[kind],
         extraEditorProps,
         key,
+        dontFocusTab,
       };
     },
     [i18n, currentFileMetadata, props.storageProviders]
   );
 
-  useEditorTabsStateSaving({
-    projectId: state.currentProject
+  const setEditorTabs = React.useCallback(
+    newEditorTabs => {
+      setState(state => ({
+        ...state,
+        editorTabs: newEditorTabs,
+      }));
+    },
+    [setState]
+  );
+
+  const {
+    hasARecordForEditorTabs,
+    openEditorsAccordingToPersistedState,
+  } = useEditorTabsStateSaving({
+    currentProjectId: state.currentProject
       ? state.currentProject.getProjectUuid()
       : null,
     editorTabs: state.editorTabs,
+    setEditorTabs: setEditorTabs,
     getEditorOpeningOptions,
   });
 
@@ -1634,11 +1657,15 @@ const MainFrame = (props: Props) => {
       }: { openEventsEditor: boolean, openSceneEditor: boolean } = {},
       editorTabs = state.editorTabs
     ): EditorTabsState => {
-      const sceneEditorOptions = getEditorOpeningOptions('layout', name);
-      const eventsEditorOptions = {
-        ...getEditorOpeningOptions('layout events', name),
+      const sceneEditorOptions = getEditorOpeningOptions({
+        kind: 'layout',
+        name,
+      });
+      const eventsEditorOptions = getEditorOpeningOptions({
+        kind: 'layout events',
+        name,
         dontFocusTab: openSceneEditor,
-      };
+      });
 
       const tabsWithSceneEditor = openSceneEditor
         ? openEditorTab(editorTabs, sceneEditorOptions)
@@ -1651,9 +1678,6 @@ const MainFrame = (props: Props) => {
         ...state,
         editorTabs: tabsWithSceneAndEventsEditors,
       }));
-      setIsLoadingProject(false);
-      setLoaderModalProgress(null, null);
-      openProjectManager(false);
       return tabsWithSceneAndEventsEditors;
     },
     [setState, state.editorTabs, getEditorOpeningOptions]
@@ -1665,7 +1689,7 @@ const MainFrame = (props: Props) => {
         ...state,
         editorTabs: openEditorTab(
           state.editorTabs,
-          getEditorOpeningOptions('external events', name)
+          getEditorOpeningOptions({ kind: 'external events', name })
         ),
       }));
       openProjectManager(false);
@@ -1679,7 +1703,7 @@ const MainFrame = (props: Props) => {
         ...state,
         editorTabs: openEditorTab(
           state.editorTabs,
-          getEditorOpeningOptions('external layout', name)
+          getEditorOpeningOptions({ kind: 'external layout', name })
         ),
       }));
       openProjectManager(false);
@@ -1696,7 +1720,10 @@ const MainFrame = (props: Props) => {
       setState(state => ({
         ...state,
         editorTabs: openEditorTab(state.editorTabs, {
-          ...getEditorOpeningOptions('events functions extension', name),
+          ...getEditorOpeningOptions({
+            kind: 'events functions extension',
+            name,
+          }),
           extraEditorProps: {
             initiallyFocusedFunctionName,
             initiallyFocusedBehaviorName,
@@ -1714,7 +1741,7 @@ const MainFrame = (props: Props) => {
         ...state,
         editorTabs: openEditorTab(
           state.editorTabs,
-          getEditorOpeningOptions('resources', '')
+          getEditorOpeningOptions({ kind: 'resources', name: '' })
         ),
       }));
     },
@@ -1727,7 +1754,7 @@ const MainFrame = (props: Props) => {
         ...state,
         editorTabs: openEditorTab(
           state.editorTabs,
-          getEditorOpeningOptions('start page', '')
+          getEditorOpeningOptions({ kind: 'start page', name: '' })
         ),
       }));
     },
@@ -1740,7 +1767,7 @@ const MainFrame = (props: Props) => {
         ...state,
         editorTabs: openEditorTab(
           state.editorTabs,
-          getEditorOpeningOptions('debugger', '')
+          getEditorOpeningOptions({ kind: 'debugger', name: '' })
         ),
       }));
     },
@@ -1928,8 +1955,13 @@ const MainFrame = (props: Props) => {
         },
         editorTabs
       );
+      setIsLoadingProject(false);
+      setLoaderModalProgress(null, null);
+
       if (currentProject.getLayoutsCount() > 1) {
         openProjectManager(true);
+      } else {
+        openProjectManager(false);
       }
     },
     [openLayout, i18n]
@@ -1957,6 +1989,9 @@ const MainFrame = (props: Props) => {
           editorTabs
         );
       }
+      setIsLoadingProject(false);
+      setLoaderModalProgress(null, null);
+      openProjectManager(false);
     },
     [openLayout, state.editorTabs]
   );
@@ -1974,10 +2009,18 @@ const MainFrame = (props: Props) => {
 
           return openFromFileMetadata(fileMetadata).then(state => {
             if (state) {
-              openSceneOrProjectManager({
-                currentProject: state.currentProject,
-                editorTabs: state.editorTabs,
-              });
+              const { currentProject } = state;
+              if (currentProject && hasARecordForEditorTabs(currentProject)) {
+                openEditorsAccordingToPersistedState(currentProject);
+                setIsLoadingProject(false);
+                setLoaderModalProgress(null, null);
+                openProjectManager(false);
+              } else {
+                openSceneOrProjectManager({
+                  currentProject: currentProject,
+                  editorTabs: state.editorTabs,
+                });
+              }
               const currentStorageProvider = getStorageProvider();
               if (currentStorageProvider.internalName === 'LocalFile') {
                 setHasProjectOpened(true);
@@ -2001,6 +2044,8 @@ const MainFrame = (props: Props) => {
     },
     [
       i18n,
+      hasARecordForEditorTabs,
+      openEditorsAccordingToPersistedState,
       getStorageProviderOperations,
       openFromFileMetadata,
       openSceneOrProjectManager,
@@ -2037,14 +2082,23 @@ const MainFrame = (props: Props) => {
       openFromFileMetadata(fileMetadata)
         .then(state => {
           if (state) {
+            const { currentProject } = state;
             if (options && options.openAllScenes) {
               openAllScenes({
-                currentProject: state.currentProject,
+                currentProject: currentProject,
                 editorTabs: state.editorTabs,
               });
+            } else if (
+              currentProject &&
+              hasARecordForEditorTabs(currentProject)
+            ) {
+              openEditorsAccordingToPersistedState(currentProject);
+              setIsLoadingProject(false);
+              setLoaderModalProgress(null, null);
+              openProjectManager(false);
             } else {
               openSceneOrProjectManager({
-                currentProject: state.currentProject,
+                currentProject: currentProject,
                 editorTabs: state.editorTabs,
               });
             }
@@ -2068,6 +2122,8 @@ const MainFrame = (props: Props) => {
       getStorageProvider,
       setHasProjectOpened,
       openAllScenes,
+      hasARecordForEditorTabs,
+      openEditorsAccordingToPersistedState,
     ]
   );
 
