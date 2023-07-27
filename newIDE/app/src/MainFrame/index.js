@@ -646,8 +646,8 @@ const MainFrame = (props: Props) => {
   );
 
   const {
-    hasARecordForEditorTabs,
-    openEditorsAccordingToPersistedState,
+    hasAPreviousSaveForEditorTabsState,
+    openEditorTabsFromPersistedState,
   } = useEditorTabsStateSaving({
     currentProjectId: state.currentProject
       ? state.currentProject.getProjectUuid()
@@ -2010,8 +2010,11 @@ const MainFrame = (props: Props) => {
           return openFromFileMetadata(fileMetadata).then(state => {
             if (state) {
               const { currentProject } = state;
-              if (currentProject && hasARecordForEditorTabs(currentProject)) {
-                openEditorsAccordingToPersistedState(currentProject);
+              if (
+                currentProject &&
+                hasAPreviousSaveForEditorTabsState(currentProject)
+              ) {
+                openEditorTabsFromPersistedState(currentProject);
                 setIsLoadingProject(false);
                 setLoaderModalProgress(null, null);
                 openProjectManager(false);
@@ -2044,8 +2047,8 @@ const MainFrame = (props: Props) => {
     },
     [
       i18n,
-      hasARecordForEditorTabs,
-      openEditorsAccordingToPersistedState,
+      hasAPreviousSaveForEditorTabsState,
+      openEditorTabsFromPersistedState,
       getStorageProviderOperations,
       openFromFileMetadata,
       openSceneOrProjectManager,
@@ -2090,9 +2093,9 @@ const MainFrame = (props: Props) => {
               });
             } else if (
               currentProject &&
-              hasARecordForEditorTabs(currentProject)
+              hasAPreviousSaveForEditorTabsState(currentProject)
             ) {
-              openEditorsAccordingToPersistedState(currentProject);
+              openEditorTabsFromPersistedState(currentProject);
               setIsLoadingProject(false);
               setLoaderModalProgress(null, null);
               openProjectManager(false);
@@ -2122,8 +2125,8 @@ const MainFrame = (props: Props) => {
       getStorageProvider,
       setHasProjectOpened,
       openAllScenes,
-      hasARecordForEditorTabs,
-      openEditorsAccordingToPersistedState,
+      hasAPreviousSaveForEditorTabsState,
+      openEditorTabsFromPersistedState,
     ]
   );
 
